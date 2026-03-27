@@ -196,10 +196,10 @@ public struct HopsConfig {
 
     // MARK: Paths
 
-    /// Returns the default config file path: ~/.config/hops/hops.toml
+    /// Returns the default config file path: ~/.hops.toml
     public static func configFilePath() -> String {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return "\(home)/.config/hops/hops.toml"
+        return "\(home)/.hops.toml"
     }
 }
 
