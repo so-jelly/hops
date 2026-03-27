@@ -1,4 +1,5 @@
 import Cocoa
+import CoreServices
 import HopsCore
 
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -19,6 +20,38 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         receivedURL = true
         routeURL(urlString)
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        if receivedURL { return }
+
+        let configPath = HopsConfig.configFilePath()
+        if !FileManager.default.fileExists(atPath: configPath) {
+            let defaultConfig = HopsConfig()
+            let content = defaultConfig.serialize()
+            try? content.write(toFile: configPath, atomically: true, encoding: .utf8)
+        }
+
+        if let handler = LSCopyDefaultHandlerForURLScheme("https" as CFString)?.takeRetainedValue() {
+            if (handler as String) != "dev.hops.app" {
+                showDefaultBrowserPrompt()
+            }
+        }
+    }
+
+    private func showDefaultBrowserPrompt() {
+        let alert = NSAlert()
+        alert.messageText = "hops isn't your default browser"
+        alert.informativeText = "Set hops as your default browser to route URLs automatically."
+        alert.addButton(withTitle: "Set Default")
+        alert.addButton(withTitle: "Later")
+        alert.alertStyle = .informational
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            if let url = URL(string: "x-apple.systempreferences:com.apple.Desktop-Settings.extension") {
+                NSWorkspace.shared.open(url)
+            }
+        }
     }
 
     private func routeURL(_ rawURL: String) {
