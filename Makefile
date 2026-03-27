@@ -1,4 +1,4 @@
-APP_DIR    = $(HOME)/Applications/hops.app
+APP_DIR    = /Applications/hops.app
 MACOS_DIR  = $(APP_DIR)/Contents/MacOS
 LSREGISTER = /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister
 
@@ -14,6 +14,8 @@ test:
 
 install: build
 	cp Info.plist $(APP_DIR)/Contents/
+	mkdir -p $(APP_DIR)/Contents/Resources
+	cp AppIcon.icns $(APP_DIR)/Contents/Resources/
 	$(LSREGISTER) -f $(APP_DIR)
 
 clean:

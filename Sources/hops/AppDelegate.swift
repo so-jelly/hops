@@ -19,6 +19,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         receivedURL = true
+        // Hide hops so it doesn't steal focus from the target browser
+        NSApp.setActivationPolicy(.accessory)
         routeURL(urlString)
     }
 
