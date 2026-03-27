@@ -1,10 +1,14 @@
 import SwiftUI
+import HopsCore
 
 @main
 struct HopsApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     var body: some Scene {
         WindowGroup {
-            Text("hops")
+            ConfigWindow()
         }
+        .handlesExternalEvents(matching: [])
     }
 }

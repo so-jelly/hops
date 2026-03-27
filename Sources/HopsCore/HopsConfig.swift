@@ -78,7 +78,7 @@ public struct HopsConfig {
     public var defaultBrowser: BrowserTarget
     public var handlers: [HandlerConfig]
 
-    public init(defaultBrowser: BrowserTarget, handlers: [HandlerConfig] = []) {
+    public init(defaultBrowser: BrowserTarget = BrowserTarget(app: "", profile: ""), handlers: [HandlerConfig] = []) {
         self.defaultBrowser = defaultBrowser
         self.handlers = handlers
     }
