@@ -4,8 +4,8 @@ import TOMLKit
 // MARK: - BrowserTarget
 
 public struct BrowserTarget: Equatable {
-    public let app: String
-    public let profile: String
+    public var app: String
+    public var profile: String
 
     public init(app: String, profile: String = "") {
         self.app = app
@@ -28,7 +28,7 @@ public struct HandlerConfig: Identifiable, Equatable {
         match: [String] = [],
         hostnames: [String] = [],
         hostnameRegexps: [String] = [],
-        app: String,
+        app: String = "",
         profile: String = ""
     ) {
         self.id = id
