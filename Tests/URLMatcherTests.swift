@@ -38,6 +38,52 @@ final class GlobMatcherTests: XCTestCase {
     }
 }
 
+final class QueryParamMatcherTests: XCTestCase {
+    func testExactKeyValueMatch() {
+        let m = QueryParamMatcher(entries: ["project=FOO"])
+        XCTAssertTrue(m.matches(URL(string: "https://example.com?project=FOO")!))
+    }
+
+    func testGlobValueMatch() {
+        let m = QueryParamMatcher(entries: ["project=FOO*"])
+        XCTAssertTrue(m.matches(URL(string: "https://example.com?project=FOO-123")!))
+    }
+
+    func testGlobValueNoMatch() {
+        let m = QueryParamMatcher(entries: ["project=FOO*"])
+        XCTAssertFalse(m.matches(URL(string: "https://example.com?project=BAR")!))
+    }
+
+    func testBareKeyMatchesAnyValue() {
+        let m = QueryParamMatcher(entries: ["debug"])
+        XCTAssertTrue(m.matches(URL(string: "https://example.com?debug=true")!))
+        XCTAssertTrue(m.matches(URL(string: "https://example.com?debug=")!))
+    }
+
+    func testWildcardValueMatchesAnyValue() {
+        let m = QueryParamMatcher(entries: ["env=*"])
+        XCTAssertTrue(m.matches(URL(string: "https://example.com?env=prod")!))
+        XCTAssertTrue(m.matches(URL(string: "https://example.com?env=staging")!))
+    }
+
+    func testNoMatchWhenParamMissing() {
+        let m = QueryParamMatcher(entries: ["project=FOO"])
+        XCTAssertFalse(m.matches(URL(string: "https://example.com?other=bar")!))
+    }
+
+    func testNoMatchWhenNoQueryString() {
+        let m = QueryParamMatcher(entries: ["project=FOO"])
+        XCTAssertFalse(m.matches(URL(string: "https://example.com/path")!))
+    }
+
+    func testMultipleEntriesOrSemantic() {
+        let m = QueryParamMatcher(entries: ["project=FOO", "env=prod"])
+        XCTAssertTrue(m.matches(URL(string: "https://example.com?project=FOO")!))
+        XCTAssertTrue(m.matches(URL(string: "https://example.com?env=prod")!))
+        XCTAssertFalse(m.matches(URL(string: "https://example.com?other=bar")!))
+    }
+}
+
 final class HostnameMatcherTests: XCTestCase {
     func testExactHostnameMatch() {
         let m = HostnameMatcher(hostnames: ["localhost"], regexPatterns: [])

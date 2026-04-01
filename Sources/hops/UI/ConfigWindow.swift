@@ -7,6 +7,8 @@ struct ConfigWindow: View {
     @State private var isAddingHandler = false
     @State private var showSaveConfirmation = false
     @State private var chromeProfiles: [ChromeProfile.ProfileInfo] = []
+    @State private var updateStatus: String?
+    @State private var isCheckingUpdate = false
 
     var isChrome: Bool {
         config.defaultBrowser.app.localizedCaseInsensitiveContains("Google Chrome")
@@ -18,6 +20,19 @@ struct ConfigWindow: View {
                 .font(.largeTitle.bold())
 
             DefaultBrowserStatus()
+
+            HStack {
+                Button("Check for Updates") {
+                    checkForUpdate()
+                }
+                .disabled(isCheckingUpdate)
+                if let updateStatus {
+                    Text(updateStatus)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+            }
 
             GroupBox("Default Browser") {
                 VStack(alignment: .leading) {
@@ -146,6 +161,23 @@ struct ConfigWindow: View {
         panel.canChooseDirectories = false
         if panel.runModal() == .OK, let url = panel.url {
             config.defaultBrowser.app = url.path
+        }
+    }
+
+    private func checkForUpdate() {
+        isCheckingUpdate = true
+        updateStatus = "Checking..."
+        Task {
+            let currentVersion = Updater.currentAppVersion()
+            if let update = await Updater.checkForUpdate(currentVersion: currentVersion) {
+                updateStatus = "Updating to version \(update.version)..."
+                if let appDelegate = NSApp.delegate as? AppDelegate {
+                    appDelegate.performUpdateCheck()
+                }
+            } else {
+                updateStatus = "Up to date"
+                isCheckingUpdate = false
+            }
         }
     }
 }

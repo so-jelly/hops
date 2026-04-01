@@ -22,9 +22,11 @@ jobs:
         env:
           TAG_NAME: ${{ github.ref_name }}
         run: |
-          mkdir -p hops.app/Contents/MacOS
+          sed -i '' "s/<string>1.0<\/string>/<string>${TAG_NAME}<\/string>/g" Info.plist
+          mkdir -p hops.app/Contents/MacOS hops.app/Contents/Resources
           cp .build/apple/Products/Release/hops hops.app/Contents/MacOS/
           cp Info.plist hops.app/Contents/
+          cp AppIcon.icns hops.app/Contents/Resources/
           zip -r "hops-${TAG_NAME}.zip" hops.app
 
       - name: Create GitHub Release

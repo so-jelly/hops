@@ -127,6 +127,52 @@ final class HopsConfigTests: XCTestCase {
         XCTAssertEqual(target.profile, "wart")
     }
 
+    func testParseQueryParams() throws {
+        let toml = """
+        [default]
+        app = "Safari"
+
+        [[handlers]]
+        query_params = ["project=FOO*", "env=prod"]
+        app = "Google Chrome"
+        profile = "Work"
+        """
+        let config = try HopsConfig.parse(toml)
+        XCTAssertEqual(config.handlers[0].queryParams, ["project=FOO*", "env=prod"])
+    }
+
+    func testRouteByQueryParam() throws {
+        let toml = """
+        [default]
+        app = "Safari"
+
+        [[handlers]]
+        query_params = ["project=FOO*"]
+        app = "Google Chrome"
+        profile = "Work"
+        """
+        let config = try HopsConfig.parse(toml)
+        let target = config.route(URL(string: "https://console.cloud.google.com?project=FOO-123")!)
+        XCTAssertEqual(target.app, "Google Chrome")
+        XCTAssertEqual(target.profile, "Work")
+    }
+
+    func testSerializeQueryParams() throws {
+        let toml = """
+        [default]
+        app = "Safari"
+
+        [[handlers]]
+        query_params = ["project=FOO*"]
+        app = "Google Chrome"
+        profile = "Work"
+        """
+        let config = try HopsConfig.parse(toml)
+        let serialized = config.serialize()
+        let reparsed = try HopsConfig.parse(serialized)
+        XCTAssertEqual(reparsed.handlers[0].queryParams, ["project=FOO*"])
+    }
+
     func testRouteUnknownDomainDefault() throws {
         let config = try HopsConfig.parse(testConfig)
         let target = config.route(URL(string: "https://example.com/page")!)

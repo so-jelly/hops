@@ -5,9 +5,10 @@ struct HandlerEditor: View {
     @Binding var handler: HandlerConfig
     @Environment(\.dismiss) private var dismiss
 
-    @State private var matchText: String = ""
-    @State private var hostnamesText: String = ""
-    @State private var regexpsText: String = ""
+    @State private var matchEntries: [String] = []
+    @State private var hostnameEntries: [String] = []
+    @State private var regexpEntries: [String] = []
+    @State private var queryParamEntries: [String] = []
     @State private var app: String = ""
     @State private var profile: String = ""
     @State private var chromeProfiles: [ChromeProfile.ProfileInfo] = []
@@ -19,10 +20,10 @@ struct HandlerEditor: View {
     var body: some View {
         Form {
             Section("URL Patterns") {
-                TextField("Glob patterns (comma-separated)", text: $matchText, axis: .vertical)
-                    .lineLimit(3)
-                TextField("Hostnames (comma-separated)", text: $hostnamesText)
-                TextField("Hostname regexps (comma-separated)", text: $regexpsText)
+                EntryList(label: "Glob patterns", placeholder: "*.example.com/*", entries: $matchEntries)
+                EntryList(label: "Hostnames", placeholder: "localhost", entries: $hostnameEntries)
+                EntryList(label: "Hostname regexps", placeholder: #".*\.local$"#, entries: $regexpEntries)
+                EntryList(label: "Query params", placeholder: "project=my-proj*", entries: $queryParamEntries)
             }
 
             Section("Target Application") {
@@ -51,32 +52,28 @@ struct HandlerEditor: View {
             .padding(.top)
         }
         .padding()
-        .frame(width: 450)
+        .frame(width: 500)
         .onAppear { loadFromHandler() }
     }
 
     private func loadFromHandler() {
-        matchText = handler.match.joined(separator: ", ")
-        hostnamesText = handler.hostnames.joined(separator: ", ")
-        regexpsText = handler.hostnameRegexps.joined(separator: ", ")
+        matchEntries = handler.match
+        hostnameEntries = handler.hostnames
+        regexpEntries = handler.hostnameRegexps
+        queryParamEntries = handler.queryParams
         app = handler.app
         profile = handler.profile
         chromeProfiles = (try? ChromeProfile.listProfiles()) ?? []
     }
 
     private func save() {
-        handler.match = splitComma(matchText)
-        handler.hostnames = splitComma(hostnamesText)
-        handler.hostnameRegexps = splitComma(regexpsText)
+        handler.match = matchEntries.filter { !$0.isEmpty }
+        handler.hostnames = hostnameEntries.filter { !$0.isEmpty }
+        handler.hostnameRegexps = regexpEntries.filter { !$0.isEmpty }
+        handler.queryParams = queryParamEntries.filter { !$0.isEmpty }
         handler.app = app
         handler.profile = isChrome ? profile : ""
         dismiss()
-    }
-
-    private func splitComma(_ text: String) -> [String] {
-        text.split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
     }
 
     private func browseForApp() {
@@ -88,6 +85,43 @@ struct HandlerEditor: View {
         panel.canChooseDirectories = false
         if panel.runModal() == .OK, let url = panel.url {
             app = url.path
+        }
+    }
+}
+
+/// A list of single-line text fields with add/remove controls.
+struct EntryList: View {
+    let label: String
+    let placeholder: String
+    @Binding var entries: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button {
+                    entries.append("")
+                } label: {
+                    Image(systemName: "plus.circle")
+                }
+                .buttonStyle(.borderless)
+            }
+            ForEach(entries.indices, id: \.self) { index in
+                HStack(spacing: 4) {
+                    TextField(placeholder, text: $entries[index])
+                        .textFieldStyle(.roundedBorder)
+                    Button {
+                        entries.remove(at: index)
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundColor(.red)
+                }
+            }
         }
     }
 }

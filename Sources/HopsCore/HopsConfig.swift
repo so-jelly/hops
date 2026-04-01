@@ -20,6 +20,7 @@ public struct HandlerConfig: Identifiable, Equatable {
     public var match: [String]
     public var hostnames: [String]
     public var hostnameRegexps: [String]
+    public var queryParams: [String]
     public var app: String
     public var profile: String
 
@@ -28,6 +29,7 @@ public struct HandlerConfig: Identifiable, Equatable {
         match: [String] = [],
         hostnames: [String] = [],
         hostnameRegexps: [String] = [],
+        queryParams: [String] = [],
         app: String = "",
         profile: String = ""
     ) {
@@ -35,6 +37,7 @@ public struct HandlerConfig: Identifiable, Equatable {
         self.match = match
         self.hostnames = hostnames
         self.hostnameRegexps = hostnameRegexps
+        self.queryParams = queryParams
         self.app = app
         self.profile = profile
     }
@@ -51,6 +54,9 @@ public struct HandlerConfig: Identifiable, Equatable {
         if !match.isEmpty {
             parts.append("globs: \(match.joined(separator: ", "))")
         }
+        if !queryParams.isEmpty {
+            parts.append("params: \(queryParams.joined(separator: ", "))")
+        }
         return parts.isEmpty ? "(empty)" : parts.joined(separator: "; ")
     }
 
@@ -62,6 +68,9 @@ public struct HandlerConfig: Identifiable, Equatable {
         }
         for pattern in match {
             matchers.append(GlobMatcher(pattern: pattern))
+        }
+        if !queryParams.isEmpty {
+            matchers.append(QueryParamMatcher(entries: queryParams))
         }
         return matchers
     }
@@ -129,10 +138,18 @@ public struct HopsConfig {
                     hostnameRegexps = []
                 }
 
+                let queryParams: [String]
+                if let queryParamsArray = handlerTable["query_params"]?.array {
+                    queryParams = queryParamsArray.compactMap { $0.string }
+                } else {
+                    queryParams = []
+                }
+
                 handlers.append(HandlerConfig(
                     match: match,
                     hostnames: hostnames,
                     hostnameRegexps: hostnameRegexps,
+                    queryParams: queryParams,
                     app: app,
                     profile: profile
                 ))
@@ -170,6 +187,9 @@ public struct HopsConfig {
             }
             if !handler.match.isEmpty {
                 lines.append("match = [\(handler.match.map(tomlString).joined(separator: ", "))]")
+            }
+            if !handler.queryParams.isEmpty {
+                lines.append("query_params = [\(handler.queryParams.map(tomlString).joined(separator: ", "))]")
             }
 
             lines.append("app = \(tomlString(handler.app))")
