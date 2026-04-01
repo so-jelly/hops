@@ -76,7 +76,7 @@ public struct HandlerConfig: Identifiable, Equatable {
     }
 
     /// Whether any matcher in this handler matches the given URL.
-    func matchesURL(_ url: URL) -> Bool {
+    public func matchesURL(_ url: URL) -> Bool {
         buildMatchers().contains { $0.matches(url) }
     }
 }

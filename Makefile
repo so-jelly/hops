@@ -1,6 +1,7 @@
 APP_DIR    = /Applications/hops.app
 MACOS_DIR  = $(APP_DIR)/Contents/MacOS
 LSREGISTER = /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister
+VERSION   := $(shell git describe --tags --always 2>/dev/null || echo dev)
 
 .PHONY: build test install clean
 
@@ -13,7 +14,7 @@ test:
 	swift test
 
 install: build
-	cp Info.plist $(APP_DIR)/Contents/
+	sed 's/<string>1.0<\/string>/<string>$(VERSION)<\/string>/g' Info.plist > $(APP_DIR)/Contents/Info.plist
 	mkdir -p $(APP_DIR)/Contents/Resources
 	cp AppIcon.icns $(APP_DIR)/Contents/Resources/
 	$(LSREGISTER) -f $(APP_DIR)

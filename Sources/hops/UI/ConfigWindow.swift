@@ -9,6 +9,7 @@ struct ConfigWindow: View {
     @State private var chromeProfiles: [ChromeProfile.ProfileInfo] = []
     @State private var updateStatus: String?
     @State private var isCheckingUpdate = false
+    @State private var testURL: String = ""
 
     var isChrome: Bool {
         config.defaultBrowser.app.localizedCaseInsensitiveContains("Google Chrome")
@@ -26,6 +27,9 @@ struct ConfigWindow: View {
                     checkForUpdate()
                 }
                 .disabled(isCheckingUpdate)
+                Text("v\(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev")")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
                 if let updateStatus {
                     Text(updateStatus)
                         .font(.caption)
@@ -99,6 +103,39 @@ struct ConfigWindow: View {
                 .padding(.vertical, 4)
             }
 
+            GroupBox("Test URL") {
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("Paste a URL to see where it routes", text: $testURL)
+                        .textFieldStyle(.roundedBorder)
+                    if let url = URL(string: testURL), !testURL.isEmpty {
+                        let routeResult = config.route(url)
+                        let matchedHandler = config.handlers.first { $0.matchesURL(url) }
+                        HStack {
+                            Image(systemName: matchedHandler != nil
+                                ? "checkmark.circle.fill" : "arrow.right.circle.fill")
+                                .foregroundColor(matchedHandler != nil ? .green : .secondary)
+                            VStack(alignment: .leading) {
+                                Text(routeResult.app.isEmpty ? "(no app)" : routeResult.app)
+                                    .fontWeight(.medium)
+                                if !routeResult.profile.isEmpty {
+                                    Text("Profile: \(routeResult.profile)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                Text(matchedHandler != nil
+                                    ? "Matched: \(matchedHandler!.summary)"
+                                    : "No handler matched — using default")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(2)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+
             HStack {
                 Spacer()
                 Button("Save") { saveConfig() }
@@ -121,14 +158,9 @@ struct ConfigWindow: View {
             HandlerEditor(handler: binding)
         }
         .sheet(isPresented: $isAddingHandler) {
-            let newHandler = HandlerConfig()
-            let binding = Binding<HandlerConfig>(
-                get: { newHandler },
-                set: { created in
-                    config.handlers.append(created)
-                }
-            )
-            HandlerEditor(handler: binding)
+            AddHandlerSheet(onSave: { created in
+                config.handlers.append(created)
+            })
         }
         .alert("Saved", isPresented: $showSaveConfirmation) {
             Button("OK") {}
@@ -179,5 +211,24 @@ struct ConfigWindow: View {
                 isCheckingUpdate = false
             }
         }
+    }
+}
+
+/// Wrapper view that owns the new handler state so the binding works correctly.
+/// The HandlerEditor writes all fields to the binding before dismissing, so we
+/// check on disappear whether any matcher was populated (save vs cancel).
+private struct AddHandlerSheet: View {
+    let onSave: (HandlerConfig) -> Void
+    @State private var handler = HandlerConfig()
+
+    var body: some View {
+        HandlerEditor(handler: $handler)
+            .onDisappear {
+                let hasContent = !handler.match.isEmpty || !handler.hostnames.isEmpty
+                    || !handler.hostnameRegexps.isEmpty || !handler.queryParams.isEmpty
+                if hasContent && !handler.app.isEmpty {
+                    onSave(handler)
+                }
+            }
     }
 }
