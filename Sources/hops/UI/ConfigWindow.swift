@@ -201,13 +201,16 @@ struct ConfigWindow: View {
         updateStatus = "Checking..."
         Task {
             let currentVersion = Updater.currentAppVersion()
-            if let update = await Updater.checkForUpdate(currentVersion: currentVersion) {
-                updateStatus = "Updating to version \(update.version)..."
-                if let appDelegate = NSApp.delegate as? AppDelegate {
-                    appDelegate.performUpdateCheck()
-                }
-            } else {
+            guard let update = await Updater.checkForUpdate(currentVersion: currentVersion) else {
                 updateStatus = "Up to date"
+                isCheckingUpdate = false
+                return
+            }
+            updateStatus = "Downloading version \(update.version)..."
+            do {
+                try await AppDelegate.downloadAndInstall(update)
+            } catch {
+                updateStatus = "Update failed: \(error.localizedDescription)"
                 isCheckingUpdate = false
             }
         }

@@ -57,53 +57,65 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             guard let update = await Updater.checkForUpdate(currentVersion: currentVersion) else {
                 return
             }
-            await installAndRelaunch(update)
+            try await Self.downloadAndInstall(update)
         }
     }
 
-    private func installAndRelaunch(_ update: Updater.UpdateInfo) async {
+    /// Downloads, unzips, and replaces /Applications/hops.app, then relaunches.
+    /// Throws on any failure so callers can surface the error.
+    static func downloadAndInstall(_ update: Updater.UpdateInfo) async throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("hops-update-\(update.version)")
 
-        do {
-            // Download the zip
-            let (zipURL, _) = try await URLSession.shared.download(from: update.downloadURL)
-            let zipDest = tempDir.appendingPathComponent("hops.zip")
-            try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-            try? FileManager.default.removeItem(at: zipDest)
-            try FileManager.default.moveItem(at: zipURL, to: zipDest)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
 
-            // Unzip
-            let unzip = Process()
-            unzip.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-            unzip.arguments = ["-o", zipDest.path, "-d", tempDir.path]
-            try unzip.run()
-            unzip.waitUntilExit()
-            guard unzip.terminationStatus == 0 else { return }
+        // Download the zip
+        let (zipURL, _) = try await URLSession.shared.download(from: update.downloadURL)
+        let zipDest = tempDir.appendingPathComponent("hops.zip")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        try? FileManager.default.removeItem(at: zipDest)
+        try FileManager.default.moveItem(at: zipURL, to: zipDest)
 
-            let extractedApp = tempDir.appendingPathComponent("hops.app")
-            guard FileManager.default.fileExists(atPath: extractedApp.path) else { return }
+        // Unzip
+        let unzip = Process()
+        unzip.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
+        unzip.arguments = ["-o", zipDest.path, "-d", tempDir.path]
+        try unzip.run()
+        unzip.waitUntilExit()
+        guard unzip.terminationStatus == 0 else {
+            throw UpdateError.unzipFailed
+        }
 
-            // Replace /Applications/hops.app
-            let appDest = URL(fileURLWithPath: "/Applications/hops.app")
-            try? FileManager.default.removeItem(at: appDest)
-            try FileManager.default.moveItem(at: extractedApp, to: appDest)
+        let extractedApp = tempDir.appendingPathComponent("hops.app")
+        guard FileManager.default.fileExists(atPath: extractedApp.path) else {
+            throw UpdateError.appNotFoundInArchive
+        }
 
-            // Cleanup temp
-            try? FileManager.default.removeItem(at: tempDir)
+        // Replace /Applications/hops.app
+        let appDest = URL(fileURLWithPath: "/Applications/hops.app")
+        try? FileManager.default.removeItem(at: appDest)
+        try FileManager.default.moveItem(at: extractedApp, to: appDest)
 
-            // Relaunch
-            let relaunch = Process()
-            relaunch.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-            relaunch.arguments = ["/Applications/hops.app"]
-            try relaunch.run()
+        // Relaunch
+        let relaunch = Process()
+        relaunch.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        relaunch.arguments = ["/Applications/hops.app"]
+        try relaunch.run()
 
-            await MainActor.run {
-                NSApp.terminate(nil)
+        await MainActor.run {
+            NSApp.terminate(nil)
+        }
+    }
+
+    enum UpdateError: LocalizedError {
+        case unzipFailed
+        case appNotFoundInArchive
+
+        var errorDescription: String? {
+            switch self {
+            case .unzipFailed: return "Failed to unzip update"
+            case .appNotFoundInArchive: return "hops.app not found in downloaded archive"
             }
-        } catch {
-            // Silent failure — app continues as-is
-            try? FileManager.default.removeItem(at: tempDir)
         }
     }
 
